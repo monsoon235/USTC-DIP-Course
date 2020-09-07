@@ -2,18 +2,6 @@ from typing import List, Tuple
 
 import cv2
 import numpy as np
-from pylab import mpl
-
-mpl.rcParams['font.sans-serif'] = ['Microsoft YaHei']
-mpl.rcParams['axes.unicode_minus'] = False
-
-
-def open_img(path: str) -> np.ndarray:
-    return cv2.imread(path)
-
-
-def save_img(img: np.ndarray, path: str):
-    cv2.imwrite(path, img)
 
 
 def normalize(arr: np.ndarray) -> np.ndarray:
@@ -64,8 +52,8 @@ def gauss_low_pass_filtering(img: np.ndarray, D0: float) -> np.ndarray:
     im_F = np.fft.fftshift(np.fft.fft2(im_float, axes=(0, 1)), axes=(0, 1))
     im_flitered_F = im_F * H
     im_filtered = np.real(np.fft.ifft2(np.fft.ifftshift(im_flitered_F, axes=(0, 1)), axes=(0, 1)))
-    im_filtered = im_filtered.round()
     im_filtered = np.clip(im_filtered, a_min=0, a_max=255)
+    im_filtered = im_filtered.round()
     return im_filtered.astype(np.uint8)
 
 
@@ -87,22 +75,22 @@ def residual_pyramid(img: np.ndarray, level: int) -> Tuple[List[np.ndarray], Lis
     return pyramid, residual
 
 
-def exp1():
-    img = open_img('img/demo-1.jpg')
-    pyramid, residual = residual_pyramid(img, 4)
-    for i in range(4):
-        save_img(pyramid[i], f'result/pyramid_{i}.png')
-        save_img(residual[i], f'result/residual_{i}.png')
-
-
 def fast_wavelet_transform(img: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     h_phi = (0.0322, -0.0126, -0.0992, 0.2979, 0.8037, 0.4976, -0.0296, -0.0758)
 
 
+def exp1():
+    img = cv2.imread('img/demo-1.jpg')
+    pyramid, residual = residual_pyramid(img, 4)
+    for i in range(4):
+        cv2.imwrite(f'result/pyramid_{i}.png', pyramid[i])
+        cv2.imwrite(f'result/residual_{i}.png', residual[i])
+
+
 def exp2():
-    img = open_img('img/demo-2.tif')
+    img = cv2.imread('img/demo-2.tif')
 
 
 if __name__ == '__main__':
-    # exp1()
+    exp1()
     exp2()

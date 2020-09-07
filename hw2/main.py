@@ -25,7 +25,8 @@ def count_pixel_level(img: np.ndarray) -> typing.Tuple[np.ndarray, int]:
 
 def draw_histogram(img: np.ndarray, ax):
     level = int(2 ** (8 * img.nbytes / img.size))
-    ax.hist(img.flatten(), bins=level, density=True, histtype='stepfilled')
+    ax.hist(img.flatten(), bins=level, range=[0, level - 1], density=True, histtype='stepfilled')
+    ax.xlim(0, level - 1)
 
 
 def histogram_equalize(img: np.ndarray, step: int) -> np.ndarray:
