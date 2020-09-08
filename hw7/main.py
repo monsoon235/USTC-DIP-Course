@@ -2,6 +2,7 @@ import os
 from typing import List
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -74,8 +75,15 @@ class HuffmanTree:
         return now.name
 
 
+# 画直方图
+def draw_histogram(img: np.ndarray, ax):
+    level = int(2 ** (8 * img.nbytes / img.size))
+    ax.hist(img.flatten(), bins=level, range=[0, level - 1], density=True, histtype='stepfilled')
+    ax.xlim(0, level - 1)
+    ax.ylim(bottom=0)
+
+
 if __name__ == '__main__':
-    # 读取 train
     imgs_train = [cv2.cvtColor(cv2.imread(os.path.join('train', filename)), cv2.COLOR_RGB2GRAY)
                   for filename in os.listdir('train')]
     level = max(int(2 ** (8 * img.nbytes / img.size)) for img in imgs_train)
@@ -83,13 +91,34 @@ if __name__ == '__main__':
     for img in imgs_train:
         values, counts = np.unique(img, return_counts=True)
         freq[values] += counts
+    # 画出频率直方图
+    plt.bar(range(freq.size), freq / freq.sum(), width=1)
+    plt.title('hist of all train images')
+    plt.xlim(0, level - 1)
+    plt.ylim(bottom=0)
+    plt.savefig('result/train_hist.png')
+    plt.close()
+    # 构建树
     freq = {value: count for value, count in enumerate(freq)}
     tree = HuffmanTree(freq)
-    imgs_test = [cv2.cvtColor(cv2.imread(os.path.join('test', filename)), cv2.COLOR_RGB2GRAY)
-                 for filename in os.listdir('test')]
-    for img in imgs_test:
+    print('编码为：')
+    print('\n'.join(
+        f"\t{k}:\t{''.join(map(str, v))}"
+        for k, v in sorted(tree.coding.items(), key=lambda item: item[0])
+    ))
+    print()
+    # 测试
+    print('文件名\t原大小 (KB)\t压缩后大小 (KB)\t压缩率 (%)')
+    for filename in os.listdir('test'):
+        img = cv2.cvtColor(cv2.imread(os.path.join('test', filename)), cv2.COLOR_RGB2GRAY)
+        # 画直方图
+        draw_histogram(img, plt)
+        plt.savefig(f'result/{os.path.splitext(filename)[0]}_hist.png')
+        plt.close()
         origin_len = img.nbytes * 8
-        huffman_coding_len = 0
+        huffman_len = 0
         for pixel in img.flatten():
-            huffman_coding_len += len(tree.encode(pixel))
-        print(origin_len, huffman_coding_len, huffman_coding_len / origin_len * 100)
+            huffman_len += len(tree.encode(pixel))
+        origin_len /= 8 * 1024
+        huffman_len /= 8 * 1024
+        print(f'{filename}\t{origin_len}\t{huffman_len}\t{huffman_len / origin_len * 100}')
