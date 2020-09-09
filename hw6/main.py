@@ -25,7 +25,10 @@ def debinarize(img_bin: np.ndarray, level: int) -> np.ndarray:
 def draw_histogram(img: np.ndarray, ax):
     level = int(2 ** (8 * img.nbytes / img.size))
     ax.hist(img.flatten(), bins=level, range=[0, level - 1], density=True, histtype='stepfilled')
+    plt.xlabel('gray scale value')
+    plt.ylabel('frequency')
     ax.xlim(0, level - 1)
+    ax.ylim(bottom=0)
 
 
 # 使用 CNN 的 im2col 技巧并行化计算
@@ -150,9 +153,7 @@ def threshold_process_iteration(img: np.ndarray, initial_threshold: int, delta: 
             break
         else:
             threshold = threshold_new
-    out = np.zeros(shape=img.shape, dtype=np.uint8)
-    out[img > threshold] = level - 1
-    return out
+    return threshold_process_global(img, threshold)
 
 
 def threshold_process_otsu(img: np.ndarray) -> Tuple[np.ndarray, float]:
@@ -204,12 +205,27 @@ if __name__ == '__main__':
     # airport_hough_otsu = threshold_process_otsu(polymersomes)
     # cv2.imwrite('result/airport_hough_otsu.png', airport_hough_otsu)
     print('===== 阈值分割 =====')
+    # 全局阈值处理
+    draw_histogram(fingerprint, plt)
+    plt.savefig('result/fingerprint_hist.png')
+    fingerprint_iteration = threshold_process_iteration(fingerprint, 128, 0.1)
+    cv2.imwrite('result/fingerprint_iteration.png', fingerprint_iteration)
+    # Otsu 阈值分割
+    plt.close()
+    draw_histogram(polymersomes, plt)
+    plt.savefig('result/polymersomes_hist.png')
+    polymersomes_iteration = threshold_process_iteration(polymersomes, 165, 0.1)
+    cv2.imwrite('result/polymersomes_iteration.png', polymersomes_iteration)
+    polymersomes_otsu, _ = threshold_process_otsu(polymersomes)
+    cv2.imwrite('result/polymersomes_otsu.png', polymersomes_otsu)
+    # septagon_shaded 的处理
     # 直方图
+    plt.close()
     draw_histogram(septagon_shaded, plt)
     plt.savefig('result/septagon_shaded_hist.png')
     # 全局迭代分隔
-    septagon_shaded_global_iteration = threshold_process_iteration(septagon_shaded, 60, 1)
-    cv2.imwrite('result/septagon_shaded_global_iteration.png', septagon_shaded_global_iteration)
+    septagon_shaded_iteration = threshold_process_iteration(septagon_shaded, 60, 0.1)
+    cv2.imwrite('result/septagon_shaded_iteration.png', septagon_shaded_iteration)
     # otsu
     septagon_shaded_otsu, _ = threshold_process_otsu(septagon_shaded)
     cv2.imwrite('result/septagon_shaded_otsu.png', septagon_shaded_otsu)
