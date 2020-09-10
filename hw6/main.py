@@ -115,23 +115,16 @@ def hough_transform(img: np.ndarray, kernel_size: Iterable[int], sigma: float, T
     # 得到一幅二值图像
     img_canny_bin = canny(img, kernel_size, sigma, TL, TH)
     # 指定ρ-θ平面中的细分
-    print(img.shape)
     param_space = np.zeros(shape=(90 * 2, math.ceil(math.sqrt(img.shape[0] ** 2 + img.shape[1] ** 2))), dtype=np.int)
-    print(param_space.shape)
     # 对像素高度集中的地方检验其累加单元的数量
-    # todo 需要更细的粒度
     theta_deg = np.arange(-90, 90)
-    theta_rad = theta_deg / 180 * np.pi
+    theta_rad = np.deg2rad(theta_deg)
     cos_theta = np.cos(theta_rad)
     sin_theta = np.sin(theta_rad)
-    xs, ys = np.where(img_canny_bin)
     for x, y in zip(*np.where(img_canny_bin)):
         ro = (x * cos_theta + y * sin_theta).round().astype(np.int)
         param_space[theta_deg + 90, ro] += 1
-    tmp = param_space.T / param_space.max() * (level - 1)
-    tmp = cv2.resize(tmp, (500, 500))
-    cv2.imwrite('test.png', tmp)
-    # 检验选中单元中像素间的关系
+    return param_space
 
 
 def threshold_process_global(img: np.ndarray, threshold: int) -> np.ndarray:
@@ -190,21 +183,39 @@ def threshold_process_multi_block(img: np.ndarray, split: Tuple[int, int]) -> np
 
 
 if __name__ == '__main__':
-    airport = cv2.imread('img/Fig1034(a)(marion_airport).tif')
-    fingerprint = cv2.imread('img/Fig1038(a)(noisy_fingerprint).tif')
-    polymersomes = cv2.imread('img/Fig1039(a)(polymersomes).tif')
-    septagon = cv2.imread('img/Fig1040(a)(large_septagon_gaussian_noise_mean_0_std_50_added).tif')
-    septagon_shaded = cv2.imread('img/Fig1046(a)(septagon_noisy_shaded).tif')
-    airport = cv2.cvtColor(airport, cv2.COLOR_RGB2GRAY)
-    fingerprint = cv2.cvtColor(fingerprint, cv2.COLOR_RGB2GRAY)
-    polymersomes = cv2.cvtColor(polymersomes, cv2.COLOR_RGB2GRAY)
-    septagon = cv2.cvtColor(septagon, cv2.COLOR_RGB2GRAY)
-    septagon_shaded = cv2.cvtColor(septagon_shaded, cv2.COLOR_RGB2GRAY)
+    airport = cv2.imread('img/Fig1034(a)(marion_airport).tif', flags=cv2.IMREAD_GRAYSCALE)
+    fingerprint = cv2.imread('img/Fig1038(a)(noisy_fingerprint).tif', flags=cv2.IMREAD_GRAYSCALE)
+    polymersomes = cv2.imread('img/Fig1039(a)(polymersomes).tif', flags=cv2.IMREAD_GRAYSCALE)
+    septagon = cv2.imread('img/Fig1040(a)(large_septagon_gaussian_noise_mean_0_std_50_added).tif',
+                          flags=cv2.IMREAD_GRAYSCALE)
+    septagon_shaded = cv2.imread('img/Fig1046(a)(septagon_noisy_shaded).tif', flags=cv2.IMREAD_GRAYSCALE)
     print('===== 霍夫变换检测直线 =====')
-    # airport_hough=hough_transform(airport, kernel_size=(13, 13), sigma=2, TL=0.05, TH=0.15)
-    # airport_hough_otsu = threshold_process_otsu(polymersomes)
-    # cv2.imwrite('result/airport_hough_otsu.png', airport_hough_otsu)
-    print('===== 阈值分割 =====')
+    level = int(2 ** (8 * airport.nbytes / airport.size))
+    airport_canny = debinarize(canny(airport, kernel_size=(13, 13), sigma=2, TL=0.05, TH=0.15), level)
+    cv2.imwrite('result/airport_canny.png', airport_canny)
+    airport_hough = hough_transform(airport, kernel_size=(13, 13), sigma=2, TL=0.05, TH=0.15)
+    tmp = airport_hough / airport_hough.max() * (level - 1)
+    tmp = tmp.T
+    tmp = tmp[::-1, :]
+    tmp = cv2.resize(tmp, (180 * 3, tmp.shape[1]))
+    cv2.imwrite('result/airport_hough.png', tmp)
+    # 检测直线, 先取小窗，取前两大亮点，画出代表的直线
+    # window = airport_hough[175:, 270:310]
+    # order1_xy, order2_xy = np.argpartition(window.flatten(), -2)[-2:]
+    # order1_x = order1_xy // window.shape[1] + 175
+    # order1_y = order1_xy % window.shape[1] + 270
+    # order2_x = order2_xy // window.shape[1] + 175
+    # order2_y = order2_xy % window.shape[1] + 270
+    # print(order1_x, order1_y)
+    # print(order2_x, order2_y)
+    # theta_1 = order1_x - 90
+    # theta_2 = order2_x - 90
+    # ro_1 = airport_hough.shape[1] // 2 - order1_y
+    # ro_2 = airport_hough.shape[1] // 2 - order2_y
+    # print(theta_1, ro_1, theta_2, ro_2)
+    # for i in range(airport.shape[0]):
+    #     for j in range(airport.shape[1]):
+    #         pass
     # 全局阈值处理
     draw_histogram(fingerprint, plt)
     plt.savefig('result/fingerprint_hist.png')
